@@ -390,11 +390,13 @@ static int FMDBDatabaseBusyHandler(void *f, int count) {
 
 
 - (void)setCachedStatement:(FMStatement*)statement forQuery:(NSString*)query {
-	
-	if (!query)
-		return;
-
-	query = [query copy]; // in case we got handed in a mutable string...
+    NSParameterAssert(query);
+    if (!query) {
+        NSLog(@"API misuse, -[FMDatabase setCachedStatement:forQuery:] query must not be nil");
+        return;
+    }
+    
+    query = [query copy]; // in case we got handed in a mutable string...
     [statement setQuery:query];
     
     NSMutableSet* statements = [_cachedStatements objectForKey:query];
@@ -1264,6 +1266,7 @@ int FMDBExecuteBulkSQLCallback(void *theBlockAsVoid, int columns, char **values,
     for (NSInteger i = 0; i < columns; i++) {
         NSString *key = [NSString stringWithUTF8String:names[i]];
         id value = values[i] ? [NSString stringWithUTF8String:values[i]] : [NSNull null];
+        value = value ? value : [NSNull null];
         [dictionary setObject:value forKey:key];
     }
     
@@ -1274,7 +1277,7 @@ int FMDBExecuteBulkSQLCallback(void *theBlockAsVoid, int columns, char **values,
     return [self executeStatements:sql withResultBlock:nil];
 }
 
-- (BOOL)executeStatements:(NSString *)sql withResultBlock:(FMDBExecuteStatementsCallbackBlock)block {
+- (BOOL)executeStatements:(NSString *)sql withResultBlock:(__attribute__((noescape)) FMDBExecuteStatementsCallbackBlock)block {
     
     int rc;
     char *errmsg = nil;
@@ -1402,7 +1405,7 @@ static NSString *FMDBEscapeSavePointName(NSString *savepointName) {
     
     return [self executeUpdate:sql error:outErr withArgumentsInArray:nil orDictionary:nil orVAList:nil];
 #else
-    NSString *errorMessage = NSLocalizedString(@"Save point functions require SQLite 3.7", nil);
+    NSString *errorMessage = NSLocalizedStringFromTable(@"Save point functions require SQLite 3.7", @"FMDB", nil);
     if (self.logsErrors) NSLog(@"%@", errorMessage);
     return NO;
 #endif
@@ -1416,7 +1419,7 @@ static NSString *FMDBEscapeSavePointName(NSString *savepointName) {
 
     return [self executeUpdate:sql error:outErr withArgumentsInArray:nil orDictionary:nil orVAList:nil];
 #else
-    NSString *errorMessage = NSLocalizedString(@"Save point functions require SQLite 3.7", nil);
+    NSString *errorMessage = NSLocalizedStringFromTable(@"Save point functions require SQLite 3.7", @"FMDB", nil);
     if (self.logsErrors) NSLog(@"%@", errorMessage);
     return NO;
 #endif
@@ -1430,13 +1433,13 @@ static NSString *FMDBEscapeSavePointName(NSString *savepointName) {
 
     return [self executeUpdate:sql error:outErr withArgumentsInArray:nil orDictionary:nil orVAList:nil];
 #else
-    NSString *errorMessage = NSLocalizedString(@"Save point functions require SQLite 3.7", nil);
+    NSString *errorMessage = NSLocalizedStringFromTable(@"Save point functions require SQLite 3.7", @"FMDB", nil);
     if (self.logsErrors) NSLog(@"%@", errorMessage);
     return NO;
 #endif
 }
 
-- (NSError*)inSavePoint:(void (^)(BOOL *rollback))block {
+- (NSError*)inSavePoint:(__attribute__((noescape)) void (^)(BOOL *rollback))block {
 #if SQLITE_VERSION_NUMBER >= 3007000
     static unsigned long savePointIdx = 0;
     
@@ -1462,7 +1465,7 @@ static NSString *FMDBEscapeSavePointName(NSString *savepointName) {
     
     return err;
 #else
-    NSString *errorMessage = NSLocalizedString(@"Save point functions require SQLite 3.7", nil);
+    NSString *errorMessage = NSLocalizedStringFromTable(@"Save point functions require SQLite 3.7", @"FMDB", nil);
     if (self.logsErrors) NSLog(@"%@", errorMessage);
     return [NSError errorWithDomain:@"FMDatabase" code:0 userInfo:@{NSLocalizedDescriptionKey : errorMessage}];
 #endif
